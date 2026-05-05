@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -206,17 +205,19 @@ func (c *Client) GetNodeInfo(ctx context.Context) (node *NodeInfo, err error) {
 }
 
 func intervalToTime(i interface{}) time.Duration {
-	switch reflect.TypeOf(i).Kind() {
-	case reflect.Int:
-		return time.Duration(i.(int)) * time.Second
-	case reflect.String:
-		i, _ := strconv.Atoi(i.(string))
-		return time.Duration(i) * time.Second
-	case reflect.Float64:
-		return time.Duration(i.(float64)) * time.Second
-	default:
-		return time.Duration(reflect.ValueOf(i).Int()) * time.Second
+	switch v := i.(type) {
+	case int:
+		return time.Duration(v) * time.Second
+	case int64:
+		return time.Duration(v) * time.Second
+	case float64:
+		return time.Duration(v) * time.Second
+	case string:
+		if val, err := strconv.Atoi(v); err == nil {
+			return time.Duration(val) * time.Second
+		}
 	}
+	return 0
 }
 
 func (t TlsSettings) EffectiveServerNames() []string {

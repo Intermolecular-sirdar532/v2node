@@ -103,13 +103,7 @@ func (c *Controller) nodeInfoMonitor(ctx context.Context) (err error) {
 
 	// update alive list
 	if newA != nil {
-		c.limiter.AliveList.Range(func(key, value interface{}) bool {
-			c.limiter.AliveList.Delete(key)
-			return true
-		})
-		for uid, ip := range newA {
-			c.limiter.AliveList.Store(uid, ip)
-		}
+		c.limiter.UpdateAliveList(newA)
 	}
 	// node no changed, check users
 	if len(newU) == 0 {
