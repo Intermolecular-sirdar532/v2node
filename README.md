@@ -5,10 +5,11 @@ A high-performance v2board backend based on modified xray-core.
 ## 项目简介
 
 v2node 是一个基于修改版 xray-core 的 V2board 节点服务端，支持多种协议（vless、vmess、trojan、shadowsocks、hysteria2、tuic、anytls），具备流量限制、证书管理等核心功能。
+本项目基于[xiao佬的v2node](https://github.com/wyx2685/v2node)制作，加入一些新的特性。
 
-**注意**：本项目需要搭配[修改版 V2board](https://github.com/wyx2685/v2board) 使用。
+**注意**：本项目和[xiao佬的v2node](https://github.com/wyx2685/v2node)一样，需要搭配[修改版 V2board](https://github.com/wyx2685/v2board) 使用。
 
-## 特性
+## 原版特性
 
 - 支持多种协议：VLESS、VMESS、Trojan、Shadowsocks、Hysteria2、TUIC、AnyTLS
 - 高性能并发设计，支持高负载场景
