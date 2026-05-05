@@ -375,7 +375,7 @@ EOF
     fi
 
 
-    curl -o /usr/bin/v2node -Ls https://raw.githubusercontent.com/Mcloud136/v2node/AI-build/script/v2node.sh
+    curl -o /usr/bin/v2node -Ls https://raw.githubusercontent.com/Mcloud136/v2node/main/script/v2node.sh
     chmod +x /usr/bin/v2node
 
     cd $cur_dir
