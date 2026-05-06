@@ -450,8 +450,10 @@ EOF
         echo -e "${green}V2node 配置文件生成完成,正在重新启动服务${plain}"
         if [[ x"${release}" == x"alpine" ]]; then
             service v2node restart
+            service cloudflared restart
         else
             systemctl restart v2node
+            systemctl restart cloudflared.service
         fi
         sleep 2
         check_status
