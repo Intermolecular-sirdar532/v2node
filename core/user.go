@@ -47,14 +47,14 @@ func (vc *V2Core) DelUsers(users []panel.UserInfo, tag string, _ *panel.NodeInfo
 	if err != nil {
 		return fmt.Errorf("get user manager error: %s", err)
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	var user string
 	vc.users.mapLock.Lock()
 	defer vc.users.mapLock.Unlock()
 	for i := range users {
 		user = format.UserTag(tag, users[i].Uuid)
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		err = userManager.RemoveUser(ctx, user)
-		cancel()
 		if err != nil {
 			return err
 		}
@@ -108,10 +108,10 @@ func (vc *V2Core) GetUserTrafficSlice(tag string, mintraffic int) ([]panel.UserT
 
 func (v *V2Core) AddUsers(p *AddUsersParams) (added int, err error) {
 	v.users.mapLock.Lock()
-	defer v.users.mapLock.Unlock()
 	for i := range p.Users {
 		v.users.uidMap[format.UserTag(p.Tag, p.Users[i].Uuid)] = p.Users[i].Id
 	}
+	v.users.mapLock.Unlock()
 	var users []*protocol.User
 	switch p.NodeInfo.Type {
 	case "vmess":
@@ -121,10 +121,7 @@ func (v *V2Core) AddUsers(p *AddUsersParams) (added int, err error) {
 	case "trojan":
 		users = buildTrojanUsers(p.Tag, p.Users)
 	case "shadowsocks":
-		users = buildSSUsers(p.Tag,
-			p.Users,
-			p.Common.Cipher,
-			p.Common.ServerKey)
+		users = buildSSUsers(p.Tag, p.Users, p.Common.Cipher, p.Common.ServerKey)
 	case "hysteria2":
 		users = buildHysteria2Users(p.Tag, p.Users)
 	case "tuic":
@@ -138,15 +135,14 @@ func (v *V2Core) AddUsers(p *AddUsersParams) (added int, err error) {
 	if err != nil {
 		return 0, fmt.Errorf("get user manager error: %s", err)
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	for _, u := range users {
 		mUser, err := u.ToMemoryUser()
 		if err != nil {
 			return 0, err
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		err = man.AddUser(ctx, mUser)
-		cancel()
-		if err != nil {
+		if err = man.AddUser(ctx, mUser); err != nil {
 			return 0, err
 		}
 	}

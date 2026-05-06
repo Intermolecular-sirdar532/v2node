@@ -1,46 +1,45 @@
 package core
 
 import (
-	"fmt"
-
 	"encoding/json"
+	"fmt"
 
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/infra/conf"
 )
 
-// build default freedom outbund
+// buildDefaultOutbound builds default freedom outbound
 func buildDefaultOutbound() (*core.OutboundHandlerConfig, error) {
-	outboundDetourConfig := &conf.OutboundDetourConfig{}
-	outboundDetourConfig.Protocol = "freedom"
-	outboundDetourConfig.Tag = "Default"
-	//sendthrough := "origin"
-	//outboundDetourConfig.SendThrough = &sendthrough
-
+	outboundDetourConfig := &conf.OutboundDetourConfig{
+		Protocol: "freedom",
+		Tag:      "Default",
+	}
 	proxySetting := &conf.FreedomConfig{
 		DomainStrategy: "UseIPv4v6",
 	}
-	var setting json.RawMessage
-	setting, err := json.Marshal(proxySetting)
+	settingBytes, err := json.Marshal(proxySetting)
 	if err != nil {
 		return nil, fmt.Errorf("marshal proxy config error: %s", err)
 	}
+	setting := json.RawMessage(settingBytes)
 	outboundDetourConfig.Settings = &setting
 	return outboundDetourConfig.Build()
 }
 
-// build block outbund
+// buildBlockOutbound builds block outbound
 func buildBlockOutbound() (*core.OutboundHandlerConfig, error) {
-	outboundDetourConfig := &conf.OutboundDetourConfig{}
-	outboundDetourConfig.Protocol = "blackhole"
-	outboundDetourConfig.Tag = "block"
+	outboundDetourConfig := &conf.OutboundDetourConfig{
+		Protocol: "blackhole",
+		Tag:      "block",
+	}
 	return outboundDetourConfig.Build()
 }
 
-// build dns outbound
+// buildDnsOutbound builds dns outbound
 func buildDnsOutbound() (*core.OutboundHandlerConfig, error) {
-	outboundDetourConfig := &conf.OutboundDetourConfig{}
-	outboundDetourConfig.Protocol = "dns"
-	outboundDetourConfig.Tag = "dns_out"
+	outboundDetourConfig := &conf.OutboundDetourConfig{
+		Protocol: "dns",
+		Tag:      "dns_out",
+	}
 	return outboundDetourConfig.Build()
 }

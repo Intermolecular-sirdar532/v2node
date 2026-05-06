@@ -179,7 +179,6 @@ func (d *DefaultDispatcher) getLink(ctx context.Context) (*transport.Link, *tran
 			common.Interrupt(inboundLink.Reader)
 			return nil, nil, nil, errors.New("get limiter ", sessionInbound.Tag, " error: ", err)
 		}
-		// Speed Limit and Device Limit
 		w, reject := limit.CheckLimit(user.Email,
 			sessionInbound.Source.Address.IP().String(),
 			sessionInbound.Source.Network == net.Network_TCP)
@@ -191,15 +190,10 @@ func (d *DefaultDispatcher) getLink(ctx context.Context) (*transport.Link, *tran
 			common.Interrupt(inboundLink.Reader)
 			return nil, nil, nil, errors.New("Limited ", user.Email, " by conn or ip")
 		}
-		var lm *LinkManager
-		if lmloaded, ok := d.LinkManagers.Load(user.Email); !ok {
-			lm = &LinkManager{
-				links: make(map[*ManagedWriter]buf.Reader),
-			}
-			d.LinkManagers.Store(user.Email, lm)
-		} else {
-			lm = lmloaded.(*LinkManager)
-		}
+		lmVal, _ := d.LinkManagers.LoadOrStore(user.Email, &LinkManager{
+			links: make(map[*ManagedWriter]buf.Reader),
+		})
+		lm := lmVal.(*LinkManager)
 		managedWriter := &ManagedWriter{
 			writer:  uplinkWriter,
 			manager: lm,
@@ -211,25 +205,14 @@ func (d *DefaultDispatcher) getLink(ctx context.Context) (*transport.Link, *tran
 			inboundLink.Writer = rate.NewRateLimitWriter(inboundLink.Writer, w)
 			outboundLink.Writer = rate.NewRateLimitWriter(outboundLink.Writer, w)
 		}
-		var t *counter.TrafficCounter
-		if c, ok := d.Counter.Load(sessionInbound.Tag); !ok {
-			t = counter.NewTrafficCounter()
-			d.Counter.Store(sessionInbound.Tag, t)
-		} else {
-			t = c.(*counter.TrafficCounter)
-		}
+		counterVal, _ := d.Counter.LoadOrStore(sessionInbound.Tag, counter.NewTrafficCounter())
+		t := counterVal.(*counter.TrafficCounter)
 
 		ts := t.GetCounter(user.Email)
 		upcounter := &counter.XrayTrafficCounter{V: &ts.UpCounter}
 		downcounter := &counter.XrayTrafficCounter{V: &ts.DownCounter}
-		inboundLink.Writer = &dispatcher.SizeStatWriter{
-			Counter: upcounter,
-			Writer:  inboundLink.Writer,
-		}
-		outboundLink.Writer = &dispatcher.SizeStatWriter{
-			Counter: downcounter,
-			Writer:  outboundLink.Writer,
-		}
+		inboundLink.Writer = &dispatcher.SizeStatWriter{Counter: upcounter, Writer: inboundLink.Writer}
+		outboundLink.Writer = &dispatcher.SizeStatWriter{Counter: downcounter, Writer: outboundLink.Writer}
 	}
 
 	return inboundLink, outboundLink, limit, nil

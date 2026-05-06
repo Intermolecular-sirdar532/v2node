@@ -4,7 +4,6 @@ import (
 	"errors"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	panel "github.com/wyx2685/v2node/api/v2board"
@@ -12,21 +11,18 @@ import (
 	"github.com/wyx2685/v2node/common/rate"
 )
 
-var limitLock sync.RWMutex
-var limiterMap atomic.Pointer[map[string]*Limiter]
+var limiterMap sync.Map
 
 func Init() {
-	m := make(map[string]*Limiter)
-	limiterMap.Store(&m)
 }
 
 type Limiter struct {
-	Nodetype     string              // Node type, e.g. "v2ray", "trojan", "shadowsocks"
-	SpeedLimit   int                 // Node speed limit in Mbps
-	UUIDtoUID    sync.Map            // Key: UUID, value: Uid
-	UserLimit    sync.Map            // Key: TagUUID value: *UserLimitInfo
-	SpeedLimiter sync.Map            // key: TagUUID, value: *rate.DynamicBucket
-	deviceTracker *DeviceTracker     // Tracks online devices per user
+	Nodetype      string         // Node type, e.g. "v2ray", "trojan", "shadowsocks"
+	SpeedLimit    int            // Node speed limit in Mbps
+	UUIDtoUID     sync.Map       // Key: UUID, value: Uid
+	UserLimit     sync.Map       // Key: TagUUID value: *UserLimitInfo
+	SpeedLimiter  sync.Map       // key: TagUUID, value: *rate.DynamicBucket
+	deviceTracker *DeviceTracker // Tracks online devices per user
 }
 
 type UserLimitInfo struct {
@@ -39,9 +35,9 @@ type UserLimitInfo struct {
 }
 
 type DeviceTracker struct {
-	onlineIPs   sync.Map  // Key: taguuid:ip -> uid
-	oldOnline   sync.Map  // Key: ip -> uid
-	aliveCount  sync.Map  // Key: uid -> count
+	onlineIPs  sync.Map // Key: taguuid:ip -> uid
+	oldOnline  sync.Map // Key: ip -> uid
+	aliveCount sync.Map // Key: uid -> count
 }
 
 func NewDeviceTracker(aliveList map[int]int) *DeviceTracker {
@@ -54,14 +50,14 @@ func NewDeviceTracker(aliveList map[int]int) *DeviceTracker {
 
 func (dt *DeviceTracker) TrackDevice(taguuid, ip string, uid, deviceLimit int) bool {
 	key := taguuid + ":" + ip
-	
+
 	if existingUID, loaded := dt.onlineIPs.LoadOrStore(key, uid); loaded {
 		if existingUID.(int) == uid {
 			return false
 		}
 		return true
 	}
-	
+
 	if deviceLimit > 0 {
 		countVal, _ := dt.aliveCount.Load(uid)
 		count := 0
@@ -73,44 +69,55 @@ func (dt *DeviceTracker) TrackDevice(taguuid, ip string, uid, deviceLimit int) b
 			return true
 		}
 	}
-	
+
 	if oldUID, ok := dt.oldOnline.Load(ip); ok && oldUID.(int) == uid {
 		dt.oldOnline.Delete(ip)
 	}
-	
+
 	return false
 }
 
 func (dt *DeviceTracker) UpdateAliveList(newAlive map[int]int) {
+	existing := make(map[int]struct{})
 	dt.aliveCount.Range(func(key, _ interface{}) bool {
-		dt.aliveCount.Delete(key)
+		existing[key.(int)] = struct{}{}
 		return true
 	})
-	for uid, ip := range newAlive {
-		dt.aliveCount.Store(uid, ip)
+
+	for uid := range existing {
+		if _, exists := newAlive[uid]; !exists {
+			dt.aliveCount.Delete(uid)
+		}
+	}
+
+	for uid, count := range newAlive {
+		dt.aliveCount.Store(uid, count)
 	}
 }
 
 func (dt *DeviceTracker) GetOnlineDevices() []panel.OnlineUser {
-	var result []panel.OnlineUser
-	
+	result := make([]panel.OnlineUser, 0, 64)
+
 	dt.oldOnline.Range(func(key, value interface{}) bool {
 		dt.oldOnline.Delete(key)
 		return true
 	})
-	
+
+	toDelete := make([]string, 0, 64)
 	dt.onlineIPs.Range(func(key, value interface{}) bool {
-		ipKey := key.(string)
-		uid := value.(int)
-		ip := ipKey[strings.LastIndex(ipKey, ":")+1:]
-		
-		dt.oldOnline.Store(ip, uid)
-		result = append(result, panel.OnlineUser{UID: uid, IP: ip})
-		dt.onlineIPs.Delete(key)
-		
+		toDelete = append(toDelete, key.(string))
 		return true
 	})
-	
+
+	for _, ipKey := range toDelete {
+		if uidVal, ok := dt.onlineIPs.LoadAndDelete(ipKey); ok {
+			uid := uidVal.(int)
+			ip := ipKey[strings.LastIndex(ipKey, ":")+1:]
+			dt.oldOnline.Store(ip, uid)
+			result = append(result, panel.OnlineUser{UID: uid, IP: ip})
+		}
+	}
+
 	return result
 }
 
@@ -125,7 +132,7 @@ func (dt *DeviceTracker) DeleteUser(taguuid string) {
 
 func AddLimiter(nodetype string, tag string, users []panel.UserInfo, aliveList map[int]int) *Limiter {
 	l := &Limiter{
-		Nodetype:     nodetype,
+		Nodetype:      nodetype,
 		deviceTracker: NewDeviceTracker(aliveList),
 	}
 	for i := range users {
@@ -142,34 +149,19 @@ func AddLimiter(nodetype string, tag string, users []panel.UserInfo, aliveList m
 		}
 		l.UserLimit.Store(format.UserTag(tag, users[i].Uuid), userLimit)
 	}
-	current := limiterMap.Load()
-	newMap := make(map[string]*Limiter, len(*current)+1)
-	for k, v := range *current {
-		newMap[k] = v
-	}
-	newMap[tag] = l
-	limiterMap.Store(&newMap)
+	limiterMap.Store(tag, l)
 	return l
 }
 
 func GetLimiter(tag string) (*Limiter, error) {
-	current := limiterMap.Load()
-	info, ok := (*current)[tag]
-	if !ok {
-		return nil, errors.New("not found")
+	if info, ok := limiterMap.Load(tag); ok {
+		return info.(*Limiter), nil
 	}
-	return info, nil
+	return nil, errors.New("not found")
 }
 
 func DeleteLimiter(tag string) {
-	current := limiterMap.Load()
-	newMap := make(map[string]*Limiter, len(*current)-1)
-	for k, v := range *current {
-		if k != tag {
-			newMap[k] = v
-		}
-	}
-	limiterMap.Store(&newMap)
+	limiterMap.Delete(tag)
 }
 
 func (l *Limiter) UpdateUser(tag string, added []panel.UserInfo, deleted []panel.UserInfo, modified []panel.UserInfo) {

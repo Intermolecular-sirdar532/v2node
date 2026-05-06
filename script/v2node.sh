@@ -198,6 +198,7 @@ start() {
             service v2node start
         else
             systemctl start v2node
+            systemctl restart cloudflared.service
         fi
         sleep 2
         check_status
