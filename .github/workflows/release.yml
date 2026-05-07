@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - master
+      - main
     paths:
       - "**/*.go"
       - "go.mod"
@@ -12,6 +12,8 @@ on:
       - ".github/workflows/release.yml"
   pull_request:
     types: [opened, synchronize, reopened]
+    branches:
+      - main
     paths:
       - "**/*.go"
       - "go.mod"
